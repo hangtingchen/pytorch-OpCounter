@@ -15,6 +15,7 @@ from .counter import (
 import torch
 import torch.nn as nn
 from torch.nn.modules.conv import _ConvNd
+import asteroid_filterbanks
 
 multiply_adds = 1
 
@@ -61,6 +62,33 @@ def count_convNd_ver2(m: _ConvNd, x: (torch.Tensor,), y: torch.Tensor):
     m.total_ops += counter_conv(m.bias.nelement(), m.weight.nelement(), output_size)
 
 
+def count_encoder(m: asteroid_filterbanks.ParEncoder, x: (torch.Tensor,), y: torch.Tensor):
+    x = x[0]
+
+    # N x Cout x H x W x  (Cin x Kw x Kh + bias)
+    m.total_ops += counter_conv(
+        0,
+        torch.zeros(m.coders[0].filterbank.filters().size()[2:]).numel(),
+        y.nelement(),
+        1,
+        1,
+    ) * x.shape[1]
+
+    m.total_ops += y.nelement() * (x.shape[1] - 1)
+
+
+def count_decoder(m: asteroid_filterbanks.ParDecoder, x: (torch.Tensor,), y: torch.Tensor):
+    x = x[0]
+
+    # N x Cout x H x W x  (Cin x Kw x Kh + bias)
+    m.total_ops += counter_conv(
+        0,
+        torch.zeros(m.coders[0].filterbank.filters().size()[2:]).numel(),
+        x.nelement(),
+        1,
+        1,
+    ) * x.shape[1]
+
 def count_bn(m, x, y):
     x = x[0]
     if not m.training:
@@ -72,6 +100,10 @@ def count_ln(m, x, y):
     if not m.training:
         m.total_ops += counter_norm(x.numel())
 
+def count_gn(m, x, y):
+    x = x[0]
+    if not m.training:
+        m.total_ops += counter_norm(x.numel())
 
 def count_in(m, x, y):
     x = x[0]
@@ -102,6 +134,13 @@ def count_softmax(m, x, y):
 
     m.total_ops += counter_softmax(batch_size, nfeatures)
 
+def count_sigmoid(m, x, y):
+    x = x[0]
+    m.total_opts += x.numel() * 3
+
+def count_tanh(m, x, y):
+    x = x[0]
+    m.total_opts += x.numel() * 5
 
 def count_avgpool(m, x, y):
     # total_add = torch.prod(torch.Tensor([m.kernel_size]))
@@ -147,3 +186,11 @@ def count_linear(m, x, y):
     num_elements = y.numel()
 
     m.total_ops += counter_linear(total_mul, num_elements)
+
+# fast_transformers.attention.shared_linear_attention.SharedLinearAttention
+def count_linear_noncal_attention(m, x, y):
+    q, k, v = x[0:3]
+    m.total_ops += k.numel()*v.size()[-1]
+    m.total_ops += q.numel()
+    m.total_ops += q.numel()*v.size()[-1]
+
