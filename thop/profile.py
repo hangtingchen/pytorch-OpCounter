@@ -67,7 +67,7 @@ register_hooks = {
     nn.modules.activation.PReLU: count_prelu,
     asteroid_filterbanks.ParEncoder: count_encoder,
     asteroid_filterbanks.ParDecoder: count_decoder,
-    # fast_transformers.attention.shared_linear_attention.SharedLinearAttention: count_linear_noncal_attention,
+    fast_transformers.attention.shared_linear_attention.SharedLinearAttention: count_linear_noncal_attention,
 }
 
 if LooseVersion(torch.__version__) >= LooseVersion("1.1.0"):
