@@ -68,6 +68,7 @@ register_hooks = {
     asteroid_filterbanks.ParEncoder: count_encoder,
     asteroid_filterbanks.ParDecoder: count_decoder,
     fast_transformers.attention.shared_linear_attention.SharedLinearAttention: count_linear_noncal_attention,
+    nn.modules.activation.MultiheadAttention: count_pytorch_attention,
 }
 
 if LooseVersion(torch.__version__) >= LooseVersion("1.1.0"):

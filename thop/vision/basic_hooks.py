@@ -190,7 +190,22 @@ def count_linear(m, x, y):
 # fast_transformers.attention.shared_linear_attention.SharedLinearAttention
 def count_linear_noncal_attention(m, x, y):
     q, k, v = x[0:3]
-    m.total_ops += k.numel()*v.size()[-1]
-    m.total_ops += q.numel()
-    m.total_ops += q.numel()*v.size()[-1]
+    m.total_ops += k.numel() * v.size()[-1]
+    m.total_ops += k.numel() + q.numel() * 2
+    m.total_ops += q.numel() * v.size()[-1] * 2
 
+def count_pytorch_attention(m, x, y):
+    q, k, v = x[0:3]
+    # linear transform
+    m.total_ops += counter_linear(q.numel(), q.size()[-1])
+    m.total_ops += counter_linear(k.numel(), k.size()[-1])
+    m.total_ops += counter_linear(v.numel(), v.size()[-1])
+    # simi cal
+    m.total_ops += counter_linear(q.numel(), q.size()[-1]) * 2
+    # softmax && add
+    if(not hasattr(m,'batch_first') or not m.batch_first):
+        m.total_ops += counter_softmax(q.size()[1]*m.num_heads, q.size()[0])
+        m.total_ops += y[0].numel() * q.size()[0]
+    else:
+        m.total_ops += counter_softmax(q.size()[0]*m.num_heads, q.size()[1])
+        m.total_ops += y[0].numel() * q.size()[1]
